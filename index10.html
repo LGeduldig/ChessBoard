@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<head>
+    <title>Chess Set</title>
+    <meta charset="utf-8">
+</head>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+    } 
+    body, html {
+        margin: 10px4;
+        padding: 0;
+    }
+    #board {
+        border-collapse: collapse;
+        table-layout: fixed;
+        position: relative;
+    }
+    #promotionPrompt {
+        position: absolute;
+        table-layout: fixed;
+        left: 0;
+        top: 0;
+        background-color: rgba(211, 211, 211, 0.666);
+    }
+    .pTile {
+        position: relative;
+        border: solid;
+    }
+    .pPiece {
+        position: absolute; 
+        box-sizing: border-box;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .square {
+        position: relative; /* needed for stacking divs*/ 
+    }
+    .lightSquare {
+        background-color: blanchedalmond;
+    }
+    .darkSquare {
+        background-color: peru;
+    }
+    .layer {
+        position: absolute; 
+        box-sizing: border-box;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .mouseEnter {
+        border-style: solid;
+        border-width: 4px;
+        border-color: red;
+        box-sizing: border-box;
+    }
+    .mouseClick {
+        background-color: rgb(98, 0, 255, 0.25);
+    }
+    .piece {
+        position: absolute; 
+        box-sizing: border-box;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    
+</style>
+
+<body> 
+    <div id='game'>
+        <table id='board'>
+            <!-- SQUARES GO HERE-->
+
+        </table>
+    </div>
+ </div>
+
+<template>
+    <table id ='promotionPrompt'>
+        <tr>
+            <td class="pTile" id="qTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'>
+                <div class="layer" > </div>
+            </td>
+            <td class="pTile" id="rTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'> 
+                <div class="layer"></div>
+            </td>
+        </tr>
+        <tr>
+            <td class="pTile" id="bTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'> 
+                <div class="layer"></div>
+            </td>
+            <td class="pTile" id="nTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'> 
+                <div class="layer"></div>
+            </td>
+        </tr>
+    </table>
+</template>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            createBoard();
+            // tell the window to run resizeWindow() whenever the user resizes the browser
+            resizeWindow();
+            createPieces();
+            window.addEventListener('resize', resizeWindow);            
+        });
+
+        let firstSquare = undefined
+        let secondSquare = undefined
+
+        const colName = ['a','b','c','d','e','f','g','h'];
+        const rowName = ['1','2','3','4','5','6','7','8'];
+
+        function createBoard() {
+            const tbl = document.querySelector('#board');
+            for (let r = 0; r < 8; r++) {
+                const row = document.createElement('tr');
+                tbl.appendChild(row);
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('td');
+                    cell.id = colName[c] + rowName[7-r]; 
+                    cell.rowNum = 8-r
+                    cell.colNum = c+1;          
+                    cell.classList.add('square'); //adding the 'square class' to cells
+                    const isLight = (c + r) % 2 === 0; // isLight is true if row# + col# is even
+                    cell.classList.add(isLight ? 'lightSquare' : 'darkSquare'); // if isLight true, then cell gets 'lightSquare' class else 'darkSquare'
+                                                                                
+                    const layer = document.createElement('div');
+                    layer.classList.add('layer')
+                    cell.appendChild(layer);
+                    
+                    cell.onmouseenter = mouseOverSquare;
+                    cell.onmouseleave = mouseOutSquare;
+                    cell.onclick = clickSquare; 
+                                      
+                    row.appendChild(cell);
+                }
+            }            
+        }   
+
+
+        function createPieces() {
+            //BLACK
+            createPiece('chessPieces/bR.png', 'black', 'rook', '#a8');
+            createPiece('chessPieces/bN.png', 'black', 'knight', '#b8');
+            createPiece('chessPieces/bB.png', 'black', 'bishop', '#c8');
+            createPiece('chessPieces/bK.png', 'black', 'king', '#e8');
+            createPiece('chessPieces/bQ.png', 'black', 'queen', '#d8');
+            createPiece('chessPieces/bB.png', 'black', 'bishop', '#f8');
+            createPiece('chessPieces/bN.png', 'black', 'knight', '#g8');
+            createPiece('chessPieces/bR.png', 'black', 'rook', '#h8');
+
+            for (let r = 0; r < 8; r++) {
+                const id = `#${colName[r]}7`;
+                createPiece('chessPieces/bP.png', 'black', 'pawn', id);
+            }
+            //WHITE
+            createPiece('chessPieces/wR.png', 'white', 'rook', '#a1');
+            createPiece('chessPieces/wN.png', 'white', 'knight', '#b1');
+            createPiece('chessPieces/wB.png', 'white', 'bishop', '#c1');
+            createPiece('chessPieces/wK.png', 'white', 'king', '#e1');
+            createPiece('chessPieces/wQ.png', 'white', 'queen', '#d1');
+            createPiece('chessPieces/wB.png', 'white', 'bishop', '#f1');
+            createPiece('chessPieces/wN.png', 'white', 'knight', '#g1');
+            createPiece('chessPieces/wR.png', 'white', 'rook', '#h1');
+
+            for (let r = 0; r < 8; r++) {
+                const id = `#${colName[r]}2`;
+                createPiece('chessPieces/wP.png', 'white', 'pawn', id);
+            }
+        }
+
+        function createPiece(imageFile, color, pieceName, squareID) {
+            const piece = document.createElement('img');
+            piece.src = imageFile;
+            piece.classList.add('piece');
+            piece.classList.add(color);
+            piece.classList.add(pieceName);
+            const square = document.querySelector(squareID);
+            square.appendChild(piece);
+        }
+
+        function clearSquares() {
+            const allSquares = document.querySelectorAll('.mouseClick');
+            for (const squ of allSquares) {
+                squ.classList.remove('mouseClick');
+            }
+        }
+
+        function showPrompt() {
+            var temp = document.getElementsByTagName("template")[0];
+            var clon = temp.content.cloneNode(true);
+            document.body.appendChild(clon);
+        }
+
+        function promptStyle() {
+            const prompt = document.querySelector('#promotionPrompt');
+            const board = document.querySelector('#board');
+            const pHeight = board.offsetHeight;
+            const pWidth = board.offsetWidth;
+            prompt.style.height = pHeight + 'px';
+            prompt.style.width = pWidth + 'px';
+        }
+        
+        function promptStyleWhite() {
+            promptStyle();
+            createPiece('chessPieces/wQ.png', 'white', 'queen', '#qTile');
+            createPiece('chessPieces/wR.png', 'white', 'rook', '#rTile');
+            createPiece('chessPieces/wB.png', 'white', 'bishop', '#bTile');
+            createPiece('chessPieces/wN.png', 'white', 'knight', '#nTile');
+        }
+
+        function promptStyleBlack() {
+            promptStyle();
+            createPiece('chessPieces/bQ.png', 'black', 'queen', '#qTile');
+            createPiece('chessPieces/bR.png', 'black', 'rook', '#rTile');
+            createPiece('chessPieces/bB.png', 'black', 'bishop', '#bTile');
+            createPiece('chessPieces/bN.png', 'black', 'knight', '#nTile');
+        }
+        //
+        // Event handlers
+        //
+
+        function resizeWindow() {
+            const tbl = document.querySelector('#board');
+            const tblSize = Math.min(window.innerWidth, window.innerHeight) - 20;
+            tbl.style.width = tblSize + 'px';
+            tbl.style.height = tblSize + 'px';
+        }      
+
+        function mouseOverSquare(event) {
+            const layer = event.target.querySelector('.layer');
+            layer.classList.add('mouseEnter');
+        }
+        
+        function mouseOutSquare(event) {
+            const layer = event.target.querySelector('.layer');
+            layer.classList.remove('mouseEnter');
+        }
+
+        function pClickW(event) {
+            secondSquare.appendChild(event.target);
+            const prompt = document.querySelector('#promotionPrompt');
+            document.body.removeChild(prompt);
+        }
+
+        function clickSquare(event) {
+            const cell = event.target.parentElement;     
+            const layer = cell.querySelector('.layer');
+            const piece = cell.querySelector('.piece');
+
+            if (firstSquare === undefined) {
+                if (piece) {
+                    layer.classList.contains('mouseClick') ? layer.classList.remove('mouseClick') : layer.classList.add('mouseClick');
+                    firstSquare = cell;                   
+                }
+            }
+            else if (secondSquare === undefined) {
+                if (cell != firstSquare) {  
+                    layer.classList.contains('mouseClick') ? layer.classList.remove('mouseClick') : layer.classList.add('mouseClick');
+                    secondSquare = cell;
+                    const firstPiece = firstSquare.querySelector('.piece');
+                    const firstColor = firstPiece.classList.contains('white') ? 'white' : 'black';
+
+                    const whitePromote = (secondSquare.rowNum === 8);
+                    const blackPromote = (secondSquare.rowNum === 1);
+
+                    if (!piece) {
+                        secondSquare.appendChild(firstPiece);
+
+                        if (firstPiece.classList.contains('pawn')) {
+                            //en passant
+                            const whiteEnPassant = (firstColor === 'white' && firstSquare.rowNum === 5 && secondSquare.rowNum === 6);
+                            const blackEnPassant = (firstColor === 'black' && firstSquare.rowNum === 4 && secondSquare.rowNum === 3);
+                            if ((whiteEnPassant || blackEnPassant) && Math.abs(secondSquare.colNum - firstSquare.colNum)) {
+                                const enpID = `#${colName[secondSquare.colNum - 1]}${firstSquare.rowNum}`;
+                                const enpSquare = document.querySelector(enpID);
+                                const enpPiece = enpSquare.querySelector('.piece');
+                                const oppositeColor = firstColor === 'white' ? 'black' : 'white';
+                                if (enpPiece.classList.contains(oppositeColor, 'pawn')) {
+                                    enpSquare.removeChild(enpPiece);
+                                }
+                            }
+                            else if (whitePromote || blackPromote) {
+                                secondSquare.removeChild(firstPiece);
+                                showPrompt();
+                                const prompt = document.querySelector('#promotionPrompt');
+                                if (whitePromote) {
+                                    promptStyleWhite();
+                                }
+                                 else {
+                                    promptStyleBlack()
+                                }
+                            } 
+                        }
+                        if (firstPiece.classList.contains('king')) {
+                            const ksCastle = (firstSquare.colNum === 5 && secondSquare.colNum === 7);
+                            const qsCastle = (firstSquare.colNum === 5 && secondSquare.colNum === 3);
+                            //kingside
+                            if (ksCastle) {
+                                const jumpedID = `#${colName[firstSquare.colNum]}${firstSquare.rowNum}`;
+                                const jumpedSquare = document.querySelector(jumpedID);
+                                const jumpedPiece = jumpedSquare.querySelector('.piece');
+                                const rookID = `#${colName[secondSquare.colNum]}${secondSquare.rowNum}`;
+                                const rookSquare = document.querySelector(rookID);
+                                const rook = rookSquare.querySelector('.piece');
+                                if (!jumpedPiece && rook && rook.classList.contains(firstColor)) {
+                                    jumpedSquare.appendChild(rook);
+                                }        
+                            }
+                            //queenside//
+                            else if (qsCastle) {
+                                const jumpedID = `#${colName[firstSquare.colNum - 2]}${firstSquare.rowNum}`;
+                                const jumpedSquare = document.querySelector(jumpedID);
+                                const jumpedPiece = jumpedSquare.querySelector('.piece');
+                                const rookID = `#${colName[secondSquare.colNum - 3]}${secondSquare.rowNum}`;
+                                const rookSquare = document.querySelector(rookID);
+                                const rook = rookSquare.querySelector('.piece');
+                                const knightID = `#${colName[secondSquare.colNum - 2]}${secondSquare.rowNum}`;
+                                const knightSquare = document.querySelector(knightID);
+                                const knight = knightSquare.querySelector('.piece');
+
+                                if (!jumpedPiece && !knight && rook && rook.classList.contains(firstColor)) {
+                                    jumpedSquare.appendChild(rook);
+                                }        
+                            }
+                        }
+                    }
+                    else {
+                        const targetPiece = secondSquare.querySelector('.piece');
+                        const targetColor = targetPiece.classList.contains('white') ? 'white' : 'black';
+                        if (firstColor != targetColor) {
+                            secondSquare.removeChild(targetPiece);
+                            secondSquare.appendChild(firstPiece);
+                            if (firstPiece.classList.contains('pawn') && (whitePromote || blackPromote)) {
+                                secondSquare.removeChild(firstPiece);
+                                showPrompt();
+                                const prompt = document.querySelector('#promotionPrompt');
+                                if (whitePromote) {
+                                    promptStyleWhite();
+                                }
+                                 else {
+                                    promptStyleBlack()
+                                }
+                            }
+                        }
+                        else {
+                            clearSquares();
+                            firstSquare = cell; 
+                            layer.classList.add('mouseClick')
+                            secondSquare = undefined;
+                        }
+                    }                    
+                }
+            }
+            else {
+                clearSquares();
+                firstSquare = undefined; 
+                secondSquare = undefined;
+                if (piece) {
+                    layer.classList.contains('mouseClick') ? layer.classList.remove('mouseClick') : layer.classList.add('mouseClick');
+                    firstSquare = cell;
+                }
+
+            }           
+        } 
+    </script>
+</body>
