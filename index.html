@@ -17,6 +17,7 @@
         border-collapse: collapse;
         table-layout: fixed;
         position: relative;
+        float: left;
     }
     #promotionPrompt {
         position: absolute;
@@ -38,7 +39,7 @@
         height: 100%;
     }
     .square {
-        position: relative; /* needed for stacking divs*/ 
+        position: relative; /* needed for fitting layer onto square*/ 
     }
     .lightSquare {
         background-color: blanchedalmond;
@@ -71,7 +72,13 @@
         width: 100%;
         height: 100%;
     }
-
+    #undo {
+        float: left;
+        height: 50px;
+        width: 50px;
+        font-family: Helvetica;
+        font-weight: bold;
+    }
     
 </style>
 
@@ -79,26 +86,26 @@
     <div id='game'>
         <table id='board'>
             <!-- SQUARES GO HERE-->
-
         </table>
+        <button id='undo' onclick='undo(event)' >UNDO</button>
     </div>
  </div>
 
 <template>
     <table id ='promotionPrompt'>
         <tr>
-            <td class="pTile" id="qTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'>
+            <td class="pTile" id="qTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClick(event)'>
                 <div class="layer" > </div>
             </td>
-            <td class="pTile" id="rTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'> 
+            <td class="pTile" id="rTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClick(event)'> 
                 <div class="layer"></div>
             </td>
         </tr>
         <tr>
-            <td class="pTile" id="bTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'> 
+            <td class="pTile" id="bTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClick(event)'> 
                 <div class="layer"></div>
             </td>
-            <td class="pTile" id="nTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClickW(event)'> 
+            <td class="pTile" id="nTile" onmouseenter="mouseOverSquare(event)" onmouseleave="mouseOutSquare(event)" onclick='pClick(event)'> 
                 <div class="layer"></div>
             </td>
         </tr>
@@ -114,8 +121,10 @@
             window.addEventListener('resize', resizeWindow);            
         });
 
-        let firstSquare = undefined
-        let secondSquare = undefined
+        let firstSquare = undefined;
+        let secondSquare = undefined;
+
+        let moveHistory = [];
 
         const colName = ['a','b','c','d','e','f','g','h'];
         const rowName = ['1','2','3','4','5','6','7','8'];
@@ -128,11 +137,11 @@
                 for (let c = 0; c < 8; c++) {
                     const cell = document.createElement('td');
                     cell.id = colName[c] + rowName[7-r]; 
-                    cell.rowNum = 8-r
+                    cell.rowNum = 8-r;
                     cell.colNum = c+1;          
-                    cell.classList.add('square'); //adding the 'square class' to cells
-                    const isLight = (c + r) % 2 === 0; // isLight is true if row# + col# is even
-                    cell.classList.add(isLight ? 'lightSquare' : 'darkSquare'); // if isLight true, then cell gets 'lightSquare' class else 'darkSquare'
+                    cell.classList.add('square'); 
+                    const isLight = (c + r) % 2 === 0; // for alternating color pattern
+                    cell.classList.add(isLight ? 'lightSquare' : 'darkSquare');
                                                                                 
                     const layer = document.createElement('div');
                     layer.classList.add('layer')
@@ -146,7 +155,6 @@
                 }
             }            
         }   
-
 
         function createPieces() {
             //BLACK
@@ -189,13 +197,18 @@
             square.appendChild(piece);
         }
 
+        function recordMove(object) {
+            moveHistory.push(object);
+            console.log(moveHistory);
+        }
+
         function clearSquares() {
             const allSquares = document.querySelectorAll('.mouseClick');
             for (const squ of allSquares) {
                 squ.classList.remove('mouseClick');
             }
         }
-
+        //Prompt for Promotion//
         function showPrompt() {
             var temp = document.getElementsByTagName("template")[0];
             var clon = temp.content.cloneNode(true);
@@ -232,7 +245,8 @@
 
         function resizeWindow() {
             const tbl = document.querySelector('#board');
-            const tblSize = Math.min(window.innerWidth, window.innerHeight) - 20;
+            const undo = document.querySelector('#undo');
+            const tblSize = Math.min(window.innerWidth - undo.offsetWidth, window.innerHeight) - 10;
             tbl.style.width = tblSize + 'px';
             tbl.style.height = tblSize + 'px';
         }      
@@ -247,23 +261,108 @@
             layer.classList.remove('mouseEnter');
         }
 
-        function pClickW(event) {
+        function pClick(event) {
             secondSquare.appendChild(event.target);
             const prompt = document.querySelector('#promotionPrompt');
             document.body.removeChild(prompt);
+        }
+        
+        //Undo Move//
+        function undo(event) {
+            const lastMove = moveHistory[moveHistory.length-1];
+            const originalSqu = document.querySelector(`#${lastMove.squ1}`);
+            const secondSqu = document.querySelector(`#${lastMove.squ2}`);
+            let piece = secondSqu.querySelector('.piece');
+            const color = lastMove.color;
+            if (lastMove.specialMove === 'promote') {
+                secondSqu.removeChild(piece);
+                if (color === 'white') {
+                    createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
+                    piece = secondSqu.querySelector('.piece');
+                }
+                else {
+                    createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
+                    piece = secondSqu.querySelector('.piece');
+                }
+            }
+            else if (lastMove.specialMove === 'ksCastle') {
+                const rookSqu1ID = `#${colName[secondSqu.colNum]}${secondSqu.rowNum}`;
+                const rookSqu1 = document.querySelector(rookSqu1ID);
+                const rookSqu2ID = `#${colName[originalSqu.colNum]}${originalSqu.rowNum}`;
+                const rookSqu2 = document.querySelector(rookSqu2ID);
+                const rook = rookSqu2.querySelector('.piece');
+                rookSqu1.appendChild(rook);
+            }
+            else if (lastMove.specialMove === 'qsCastle') {
+                const rookSqu1ID = `#${colName[secondSqu.colNum - 3]}${secondSqu.rowNum}`;
+                const rookSqu1 = document.querySelector(rookSqu1ID);
+                const rookSqu2ID = `#${colName[originalSqu.colNum - 2]}${originalSqu.rowNum}`;
+                const rookSqu2 = document.querySelector(rookSqu2ID);
+                const rook = rookSqu2.querySelector('.piece');
+                rookSqu1.appendChild(rook);
+            }
+            else if (lastMove.specialMove === 'enPassant') {
+                const enpID =  `#${colName[secondSqu.colNum - 1]}${originalSqu.rowNum}`;
+                if (color === 'white') {
+                    createPiece('chessPieces/bP.png', 'black', 'pawn', enpID);
+                }
+                else {
+                    createPiece('chessPieces/wP.png', 'white', 'pawn', enpID);
+                }
+            }
+            originalSqu.appendChild(piece);
+            if ('takenPiece' in lastMove) {
+                const pieceType = lastMove.takenPiece;
+                if (color === 'white') {
+                    if (pieceType === 'pawn') {
+                        createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'knight') {
+                        createPiece('chessPieces/bN.png', 'black', 'knight', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'bishop') {
+                        createPiece('chessPieces/bB.png', 'black', 'bishop', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'rook') {
+                        createPiece('chessPieces/bR.png', 'black', 'rook', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'queen') {
+                        createPiece('chessPieces/bQ.png', 'black', 'queen', `#${lastMove.squ2}`);
+                    }
+                }
+                else {
+                    if (pieceType === 'pawn') {
+                        createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'knight') {
+                        createPiece('chessPieces/wN.png', 'white', 'knight', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'bishop') {
+                        createPiece('chessPieces/wB.png', 'white', 'bishop', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'rook') {
+                        createPiece('chessPieces/wR.png', 'white', 'rook', `#${lastMove.squ2}`);
+                    }
+                    if (pieceType === 'queen') {
+                        createPiece('chessPieces/wQ.png', 'white', 'queen', `#${lastMove.squ2}`);
+                    }
+                }
+            }
+            moveHistory.pop();
         }
 
         function clickSquare(event) {
             const cell = event.target.parentElement;     
             const layer = cell.querySelector('.layer');
             const piece = cell.querySelector('.piece');
-
+            //Selecting Piece to Move//
             if (firstSquare === undefined) {
                 if (piece) {
                     layer.classList.contains('mouseClick') ? layer.classList.remove('mouseClick') : layer.classList.add('mouseClick');
                     firstSquare = cell;                   
                 }
             }
+            //Moving Piece//
             else if (secondSquare === undefined) {
                 if (cell != firstSquare) {  
                     layer.classList.contains('mouseClick') ? layer.classList.remove('mouseClick') : layer.classList.add('mouseClick');
@@ -274,38 +373,47 @@
                     const whitePromote = (secondSquare.rowNum === 8);
                     const blackPromote = (secondSquare.rowNum === 1);
 
+                    const moveDic = {color: firstColor, squ1: firstSquare.id, squ2: secondSquare.id};
+                    //Moves that are not basic captures//
                     if (!piece) {
                         secondSquare.appendChild(firstPiece);
-
                         if (firstPiece.classList.contains('pawn')) {
-                            //en passant
+                            //en passant//
                             const whiteEnPassant = (firstColor === 'white' && firstSquare.rowNum === 5 && secondSquare.rowNum === 6);
                             const blackEnPassant = (firstColor === 'black' && firstSquare.rowNum === 4 && secondSquare.rowNum === 3);
-                            if ((whiteEnPassant || blackEnPassant) && Math.abs(secondSquare.colNum - firstSquare.colNum)) {
+                            if ((whiteEnPassant || blackEnPassant) && Math.abs(secondSquare.colNum - firstSquare.colNum) === 1) {
                                 const enpID = `#${colName[secondSquare.colNum - 1]}${firstSquare.rowNum}`;
                                 const enpSquare = document.querySelector(enpID);
                                 const enpPiece = enpSquare.querySelector('.piece');
                                 const oppositeColor = firstColor === 'white' ? 'black' : 'white';
                                 if (enpPiece.classList.contains(oppositeColor, 'pawn')) {
                                     enpSquare.removeChild(enpPiece);
+                                    moveDic.specialMove = 'enPassant';
+                                    recordMove(moveDic);
                                 }
                             }
+                            //promotion//
                             else if (whitePromote || blackPromote) {
                                 secondSquare.removeChild(firstPiece);
                                 showPrompt();
+                                moveDic.specialMove = 'promote';
+                                recordMove(moveDic);
                                 const prompt = document.querySelector('#promotionPrompt');
                                 if (whitePromote) {
                                     promptStyleWhite();
                                 }
                                  else {
-                                    promptStyleBlack()
+                                    promptStyleBlack();
                                 }
+                            }
+                            else {
+                                recordMove(moveDic);
                             } 
                         }
-                        if (firstPiece.classList.contains('king')) {
+                        else if (firstPiece.classList.contains('king')) {
                             const ksCastle = (firstSquare.colNum === 5 && secondSquare.colNum === 7);
                             const qsCastle = (firstSquare.colNum === 5 && secondSquare.colNum === 3);
-                            //kingside
+                            //kingside//
                             if (ksCastle) {
                                 const jumpedID = `#${colName[firstSquare.colNum]}${firstSquare.rowNum}`;
                                 const jumpedSquare = document.querySelector(jumpedID);
@@ -315,6 +423,8 @@
                                 const rook = rookSquare.querySelector('.piece');
                                 if (!jumpedPiece && rook && rook.classList.contains(firstColor)) {
                                     jumpedSquare.appendChild(rook);
+                                    moveDic.specialMove = 'ksCastle';
+                                    recordMove(moveDic);
                                 }        
                             }
                             //queenside//
@@ -328,40 +438,72 @@
                                 const knightID = `#${colName[secondSquare.colNum - 2]}${secondSquare.rowNum}`;
                                 const knightSquare = document.querySelector(knightID);
                                 const knight = knightSquare.querySelector('.piece');
-
                                 if (!jumpedPiece && !knight && rook && rook.classList.contains(firstColor)) {
                                     jumpedSquare.appendChild(rook);
+                                    moveDic.specialMove = 'qsCastle';
+                                    recordMove(moveDic);
                                 }        
                             }
+                            else {
+                                recordMove(moveDic);
+                            }
+                        }
+                        else {
+                            recordMove(moveDic);
                         }
                     }
                     else {
+                        //captures//
                         const targetPiece = secondSquare.querySelector('.piece');
                         const targetColor = targetPiece.classList.contains('white') ? 'white' : 'black';
-                        if (firstColor != targetColor) {
+                        let targetType = undefined;
+                        if (targetPiece.classList.contains('pawn')) {
+                            targetType = 'pawn';
+                        }
+                        else if (targetPiece.classList.contains('bishop')) {
+                            targetType = 'bishop';
+                        }
+                        else if (targetPiece.classList.contains('knight')) {
+                            targetType = 'knight';
+                        }
+                        else if (targetPiece.classList.contains('queen')) {
+                            targetType = 'queen';
+                        }
+                        else if (targetPiece.classList.contains('rook')) {
+                            targetType = 'rook';
+                        }
+                        if (firstColor != targetColor && targetType != undefined) {
                             secondSquare.removeChild(targetPiece);
                             secondSquare.appendChild(firstPiece);
+                            moveDic.takenPiece = targetType;
+                            //capture into promotion//
                             if (firstPiece.classList.contains('pawn') && (whitePromote || blackPromote)) {
                                 secondSquare.removeChild(firstPiece);
+                                moveDic.specialMove = 'promote';
+                                recordMove(moveDic);
                                 showPrompt();
                                 const prompt = document.querySelector('#promotionPrompt');
                                 if (whitePromote) {
                                     promptStyleWhite();
                                 }
                                  else {
-                                    promptStyleBlack()
+                                    promptStyleBlack();
                                 }
+                            }
+                            else {
+                                recordMove(moveDic);
                             }
                         }
                         else {
                             clearSquares();
                             firstSquare = cell; 
-                            layer.classList.add('mouseClick')
+                            layer.classList.add('mouseClick');
                             secondSquare = undefined;
                         }
                     }                    
                 }
             }
+            //initializing next move//
             else {
                 clearSquares();
                 firstSquare = undefined; 
@@ -370,7 +512,6 @@
                     layer.classList.contains('mouseClick') ? layer.classList.remove('mouseClick') : layer.classList.add('mouseClick');
                     firstSquare = cell;
                 }
-
             }           
         } 
     </script>
