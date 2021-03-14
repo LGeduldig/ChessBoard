@@ -72,12 +72,55 @@
         width: 100%;
         height: 100%;
     }
-    #undo {
+
+    #sideBar {
         float: left;
+    }
+
+    #undo {
         height: 50px;
-        width: 50px;
+        width: 240px;
         font-family: Helvetica;
         font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    #header {
+        font-family: Helvetica;
+        font-weight: bold;
+        text-align: center;
+        padding-bottom: 10px;
+        padding-top: 10px;
+    }
+
+    .buttonTable {
+        table-layout: fixed;
+        border-collapse: collapse;
+        width: 240px;
+        height: 30px;
+
+    }
+
+    .buttonTile {
+        position: relative;
+        width: 80px;
+        height: 30px;
+        padding-bottom: 1px;
+        padding-top: 1px;
+    }
+
+    .button {
+        height: 100%;
+        width: 100%;
+        font-family: Helvetica;
+        font-weight: bold;
+        left: 0;
+        top: 0;
+        position: absolute;
+    }
+
+    #gameList {
+        width: 240px;
     }
     
 </style>
@@ -87,8 +130,45 @@
         <table id='board'>
             <!-- SQUARES GO HERE-->
         </table>
-        <button id='undo' onclick='undo(event)' >UNDO</button>
     </div>
+    <div id='sideBar'>
+        <table class ='buttonTable'>
+            <tr>
+                <td class="buttonTile">
+                    <button class='button' onclick='undo(event)' >UNDO</button>
+                </td>
+                <td class="buttonTile">
+                    <button class='button' onclick='prevMove(event)'>PREV</button>
+                </td>
+                <td class="buttonTile">
+                    <button class='button' onclick='nextMove(event)'>NEXT</button>
+                </td>
+            </tr>
+        </table> 
+        <div id='header'>GAME ARCHIVE</div>
+        <table class ='buttonTable'>
+            <tr>
+                <td class="buttonTile">
+                    <button class='button' onclick='saveGame(event)'>SAVE</button>
+                </td>
+                <td class="buttonTile">
+                    <button class='button' onclick='saveAs(event)'>SAVE AS</button>
+                </td>
+            </tr>
+        </table>
+        <table class ='buttonTable'>
+            <tr>
+                <td class="buttonTile">
+                    <button class='button' onclick='loadGame(event)'>LOAD GAME</button>
+                </td>
+                <td class="buttonTile">
+                    <button class='button' onclick='deleteGame(event)'>DELETE GAME</button>
+                </td>
+            </tr>
+        </table>
+        <select id="gameList" size="5">
+        </select>
+    </div>  
  </div>
 
 <template>
@@ -118,6 +198,7 @@
             // tell the window to run resizeWindow() whenever the user resizes the browser
             resizeWindow();
             createPieces();
+            loadOptions();
             window.addEventListener('resize', resizeWindow);            
         });
 
@@ -125,6 +206,8 @@
         let secondSquare = undefined;
 
         let moveHistory = [];
+        let moveIndex = -1;
+        let moveDix = {};
 
         const colName = ['a','b','c','d','e','f','g','h'];
         const rowName = ['1','2','3','4','5','6','7','8'];
@@ -198,7 +281,7 @@
         }
 
         function recordMove(object) {
-            moveHistory.push(object);
+            moveHistory.splice(moveIndex + 1,moveHistory.length - moveIndex,object);
             console.log(moveHistory);
         }
 
@@ -208,6 +291,29 @@
                 squ.classList.remove('mouseClick');
             }
         }
+
+        function clearPieces() {
+            const squares = document.querySelectorAll('.square');
+            for (const squ of squares) { 
+                const piece = squ.querySelector('.piece');
+                if (piece) {
+                    squ.removeChild(piece);
+                }
+            }
+        }
+
+        function loadOptions() {
+            const select = document.querySelector('#gameList');
+            for (i=0; i<localStorage.length; i++) {
+                optionName = localStorage.key(i);
+                if (optionName != "") {
+                    const option = document.createElement("option");
+                    option.text = optionName;
+                    select.appendChild(option);
+                }
+            }
+        }
+
         //Prompt for Promotion//
         function showPrompt() {
             var temp = document.getElementsByTagName("template")[0];
@@ -246,7 +352,7 @@
         function resizeWindow() {
             const tbl = document.querySelector('#board');
             const undo = document.querySelector('#undo');
-            const tblSize = Math.min(window.innerWidth - undo.offsetWidth, window.innerHeight) - 10;
+            const tblSize = Math.min(window.innerWidth - sideBar.offsetWidth, window.innerHeight) - 10;
             tbl.style.width = tblSize + 'px';
             tbl.style.height = tblSize + 'px';
         }      
@@ -262,93 +368,313 @@
         }
 
         function pClick(event) {
-            secondSquare.appendChild(event.target);
+            const pPiece = event.target;
+            secondSquare.appendChild(pPiece);
             const prompt = document.querySelector('#promotionPrompt');
             document.body.removeChild(prompt);
+            if (pPiece.classList.contains('bishop')) {
+                moveDic.promotePiece = 'bishop';
+            }
+            else if (pPiece.classList.contains('knight')) {
+                moveDic.promotePiece = 'knight';
+            }
+            else if (pPiece.classList.contains('queen')) {
+                moveDic.promotePiece = 'queen';
+            }
+            else if (pPiece.classList.contains('rook')) {
+                moveDic.promotePiece = 'rook';
+            }
+        }
+
+        function saveGame(event) {
+            const select = document.querySelector('#gameList');
+            const selectedOption = select.options[select.selectedIndex];
+            const historyClone = [...moveHistory];
+            if (selectedOption != undefined) {
+                const gameName = select.options[select.selectedIndex].text;
+                localStorage[gameName] = JSON.stringify(historyClone);
+            }
+        }
+
+        function saveAs(event) {
+            const select = document.querySelector('#gameList');
+            const selectedOption = select.options[select.selectedIndex];
+            const historyClone = [...moveHistory];
+            const gameName = prompt("Enter the name of this game");
+                if (gameName != null) {
+                    const option = document.createElement("option");
+                    option.text = gameName;
+                    select.appendChild(option);
+                    localStorage[gameName] = JSON.stringify(historyClone);
+                }
+        }
+
+        function loadGame(event) {
+            const select = document.querySelector('#gameList');
+            const gameName = select.options[select.selectedIndex].text;
+            moveHistory = JSON.parse(localStorage[gameName]);
+            clearPieces();
+            createPieces();
+            moveIndex = -1;
+            console.log(moveHistory);
+        }
+
+        function deleteGame(event) {
+            const select = document.querySelector('#gameList');
+            const gameName = select.options[select.selectedIndex].text;
+            select.remove(select.selectedIndex);
+            localStorage.removeItem(gameName);
+            console.log(localStorage);
         }
         
         //Undo Move//
         function undo(event) {
-            const lastMove = moveHistory[moveHistory.length-1];
-            const originalSqu = document.querySelector(`#${lastMove.squ1}`);
-            const secondSqu = document.querySelector(`#${lastMove.squ2}`);
-            let piece = secondSqu.querySelector('.piece');
-            const color = lastMove.color;
-            if (lastMove.specialMove === 'promote') {
-                secondSqu.removeChild(piece);
-                if (color === 'white') {
-                    createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
-                    piece = secondSqu.querySelector('.piece');
-                }
-                else {
-                    createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
-                    piece = secondSqu.querySelector('.piece');
-                }
-            }
-            else if (lastMove.specialMove === 'ksCastle') {
-                const rookSqu1ID = `#${colName[secondSqu.colNum]}${secondSqu.rowNum}`;
-                const rookSqu1 = document.querySelector(rookSqu1ID);
-                const rookSqu2ID = `#${colName[originalSqu.colNum]}${originalSqu.rowNum}`;
-                const rookSqu2 = document.querySelector(rookSqu2ID);
-                const rook = rookSqu2.querySelector('.piece');
-                rookSqu1.appendChild(rook);
-            }
-            else if (lastMove.specialMove === 'qsCastle') {
-                const rookSqu1ID = `#${colName[secondSqu.colNum - 3]}${secondSqu.rowNum}`;
-                const rookSqu1 = document.querySelector(rookSqu1ID);
-                const rookSqu2ID = `#${colName[originalSqu.colNum - 2]}${originalSqu.rowNum}`;
-                const rookSqu2 = document.querySelector(rookSqu2ID);
-                const rook = rookSqu2.querySelector('.piece');
-                rookSqu1.appendChild(rook);
-            }
-            else if (lastMove.specialMove === 'enPassant') {
-                const enpID =  `#${colName[secondSqu.colNum - 1]}${originalSqu.rowNum}`;
-                if (color === 'white') {
-                    createPiece('chessPieces/bP.png', 'black', 'pawn', enpID);
-                }
-                else {
-                    createPiece('chessPieces/wP.png', 'white', 'pawn', enpID);
-                }
-            }
-            originalSqu.appendChild(piece);
-            if ('takenPiece' in lastMove) {
-                const pieceType = lastMove.takenPiece;
-                if (color === 'white') {
-                    if (pieceType === 'pawn') {
-                        createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'knight') {
-                        createPiece('chessPieces/bN.png', 'black', 'knight', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'bishop') {
-                        createPiece('chessPieces/bB.png', 'black', 'bishop', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'rook') {
-                        createPiece('chessPieces/bR.png', 'black', 'rook', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'queen') {
-                        createPiece('chessPieces/bQ.png', 'black', 'queen', `#${lastMove.squ2}`);
-                    }
-                }
-                else {
-                    if (pieceType === 'pawn') {
+            if (moveIndex > -1) {
+                const lastMove = moveHistory[moveHistory.length-1];
+                const originalSqu = document.querySelector(`#${lastMove.squ1}`); 
+                const secondSqu = document.querySelector(`#${lastMove.squ2}`);
+                let piece = secondSqu.querySelector('.piece');
+                const color = lastMove.color;
+                if (lastMove.specialMove === 'promote') {
+                    secondSqu.removeChild(piece);
+                    if (color === 'white') {
                         createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
+                        piece = secondSqu.querySelector('.piece');
                     }
-                    if (pieceType === 'knight') {
-                        createPiece('chessPieces/wN.png', 'white', 'knight', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'bishop') {
-                        createPiece('chessPieces/wB.png', 'white', 'bishop', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'rook') {
-                        createPiece('chessPieces/wR.png', 'white', 'rook', `#${lastMove.squ2}`);
-                    }
-                    if (pieceType === 'queen') {
-                        createPiece('chessPieces/wQ.png', 'white', 'queen', `#${lastMove.squ2}`);
+                    else {
+                        createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
+                        piece = secondSqu.querySelector('.piece');
                     }
                 }
+                else if (lastMove.specialMove === 'ksCastle') {
+                    const rookSqu1ID = `#${colName[secondSqu.colNum]}${secondSqu.rowNum}`;
+                    const rookSqu1 = document.querySelector(rookSqu1ID);
+                    const rookSqu2ID = `#${colName[originalSqu.colNum]}${originalSqu.rowNum}`;
+                    const rookSqu2 = document.querySelector(rookSqu2ID);
+                    const rook = rookSqu2.querySelector('.piece');
+                    rookSqu1.appendChild(rook);
+                }
+                else if (lastMove.specialMove === 'qsCastle') {
+                    const rookSqu1ID = `#${colName[secondSqu.colNum - 3]}${secondSqu.rowNum}`;
+                    const rookSqu1 = document.querySelector(rookSqu1ID);
+                    const rookSqu2ID = `#${colName[originalSqu.colNum - 2]}${originalSqu.rowNum}`;
+                    const rookSqu2 = document.querySelector(rookSqu2ID);
+                    const rook = rookSqu2.querySelector('.piece');
+                    rookSqu1.appendChild(rook);
+                }
+                else if (lastMove.specialMove === 'enPassant') {
+                    const enpID =  `#${colName[secondSqu.colNum - 1]}${originalSqu.rowNum}`;
+                    if (color === 'white') {
+                        createPiece('chessPieces/bP.png', 'black', 'pawn', enpID);
+                    }
+                    else {
+                        createPiece('chessPieces/wP.png', 'white', 'pawn', enpID);
+                    }
+                }
+                originalSqu.appendChild(piece);
+                if ('takenPiece' in lastMove) {
+                    const pieceType = lastMove.takenPiece;
+                    if (color === 'white') {
+                        if (pieceType === 'pawn') {
+                            createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'knight') {
+                            createPiece('chessPieces/bN.png', 'black', 'knight', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'bishop') {
+                            createPiece('chessPieces/bB.png', 'black', 'bishop', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'rook') {
+                            createPiece('chessPieces/bR.png', 'black', 'rook', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'queen') {
+                            createPiece('chessPieces/bQ.png', 'black', 'queen', `#${lastMove.squ2}`);
+                        }
+                    }
+                    else {
+                        if (pieceType === 'pawn') {
+                            createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'knight') {
+                            createPiece('chessPieces/wN.png', 'white', 'knight', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'bishop') {
+                            createPiece('chessPieces/wB.png', 'white', 'bishop', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'rook') {
+                            createPiece('chessPieces/wR.png', 'white', 'rook', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'queen') {
+                            createPiece('chessPieces/wQ.png', 'white', 'queen', `#${lastMove.squ2}`);
+                        }
+                    }
+                }
+                moveHistory.pop();
+                moveIndex = moveHistory.length - 1;
+                console.log(moveIndex);
             }
-            moveHistory.pop();
+        }
+
+        function prevMove(event) {
+            if (moveIndex > -1) {
+                const lastMove = moveHistory[moveIndex];
+                const originalSqu = document.querySelector(`#${lastMove.squ1}`); 
+                const secondSqu = document.querySelector(`#${lastMove.squ2}`);
+                let piece = secondSqu.querySelector('.piece');
+                const color = lastMove.color;
+                if (lastMove.specialMove === 'promote') {
+                    secondSqu.removeChild(piece);
+                    if (color === 'white') {
+                        createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
+                        piece = secondSqu.querySelector('.piece');
+                    }
+                    else {
+                        createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
+                        piece = secondSqu.querySelector('.piece');
+                    }
+                }
+                else if (lastMove.specialMove === 'ksCastle') {
+                    const rookSqu1ID = `#${colName[secondSqu.colNum]}${secondSqu.rowNum}`;
+                    const rookSqu1 = document.querySelector(rookSqu1ID);
+                    const rookSqu2ID = `#${colName[originalSqu.colNum]}${originalSqu.rowNum}`;
+                    const rookSqu2 = document.querySelector(rookSqu2ID);
+                    const rook = rookSqu2.querySelector('.piece');
+                    rookSqu1.appendChild(rook);
+                }
+                else if (lastMove.specialMove === 'qsCastle') {
+                    const rookSqu1ID = `#${colName[secondSqu.colNum - 3]}${secondSqu.rowNum}`;
+                    const rookSqu1 = document.querySelector(rookSqu1ID);
+                    const rookSqu2ID = `#${colName[originalSqu.colNum - 2]}${originalSqu.rowNum}`;
+                    const rookSqu2 = document.querySelector(rookSqu2ID);
+                    const rook = rookSqu2.querySelector('.piece');
+                    rookSqu1.appendChild(rook);
+                }
+                else if (lastMove.specialMove === 'enPassant') {
+                    const enpID =  `#${colName[secondSqu.colNum - 1]}${originalSqu.rowNum}`;
+                    if (color === 'white') {
+                        createPiece('chessPieces/bP.png', 'black', 'pawn', enpID);
+                    }
+                    else {
+                        createPiece('chessPieces/wP.png', 'white', 'pawn', enpID);
+                    }
+                }
+                originalSqu.appendChild(piece);
+                if ('takenPiece' in lastMove) {
+                    const pieceType = lastMove.takenPiece;
+                    if (color === 'white') {
+                        if (pieceType === 'pawn') {
+                            createPiece('chessPieces/bP.png', 'black', 'pawn', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'knight') {
+                            createPiece('chessPieces/bN.png', 'black', 'knight', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'bishop') {
+                            createPiece('chessPieces/bB.png', 'black', 'bishop', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'rook') {
+                            createPiece('chessPieces/bR.png', 'black', 'rook', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'queen') {
+                            createPiece('chessPieces/bQ.png', 'black', 'queen', `#${lastMove.squ2}`);
+                        }
+                    }
+                    else {
+                        if (pieceType === 'pawn') {
+                            createPiece('chessPieces/wP.png', 'white', 'pawn', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'knight') {
+                            createPiece('chessPieces/wN.png', 'white', 'knight', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'bishop') {
+                            createPiece('chessPieces/wB.png', 'white', 'bishop', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'rook') {
+                            createPiece('chessPieces/wR.png', 'white', 'rook', `#${lastMove.squ2}`);
+                        }
+                        if (pieceType === 'queen') {
+                            createPiece('chessPieces/wQ.png', 'white', 'queen', `#${lastMove.squ2}`);
+                        }
+                    }
+                }
+                moveIndex -= 1;
+                console.log(moveIndex);
+            }    
+        }
+
+        function nextMove(event) {
+            if (moveIndex < moveHistory.length -1) {
+                moveIndex += 1;
+                console.log(moveIndex);
+                const move = moveHistory[moveIndex];
+                const originalSqu = document.querySelector(`#${move.squ1}`); 
+                const secondSqu = document.querySelector(`#${move.squ2}`);
+                let piece = originalSqu.querySelector('.piece');
+                const color = move.color;
+
+                if ('takenPiece' in move) {
+                    takenPiece = secondSqu.querySelector('.piece');
+                    secondSqu.removeChild(takenPiece);
+                }
+                else if (move.specialMove === 'enPassant') {
+                    const enpID =  `#${colName[secondSqu.colNum - 1]}${originalSqu.rowNum}`;
+                    const enpSqu = document.querySelector(enpID);
+                    const takenPiece = enpSqu.querySelector('.piece');
+                    enpSqu.removeChild(takenPiece);
+                }
+                else if (move.specialMove === 'ksCastle') {
+                    const rookSqu1ID = `#${colName[secondSqu.colNum]}${secondSqu.rowNum}`;
+                    const rookSqu1 = document.querySelector(rookSqu1ID);
+                    const rookSqu2ID = `#${colName[originalSqu.colNum]}${originalSqu.rowNum}`;
+                    const rookSqu2 = document.querySelector(rookSqu2ID);
+                    const rook = rookSqu1.querySelector('.piece');
+                    rookSqu2.appendChild(rook);
+                }
+                else if (move.specialMove === 'qsCastle') {
+                    const rookSqu1ID = `#${colName[secondSqu.colNum - 3]}${secondSqu.rowNum}`;
+                    const rookSqu1 = document.querySelector(rookSqu1ID);
+                    const rookSqu2ID = `#${colName[originalSqu.colNum - 2]}${originalSqu.rowNum}`;
+                    const rookSqu2 = document.querySelector(rookSqu2ID);
+                    const rook = rookSqu2.querySelector('.piece');
+                    rookSqu2.appendChild(rook);
+                }             
+                secondSqu.appendChild(piece);
+
+                if (move.specialMove === 'promote') {
+                    secondSqu.removeChild(piece);
+                    if (move.promotePiece === 'bishop') {
+                        if (color === 'white') {
+                            createPiece('chessPieces/wB.png', 'white', 'bishop', `#${move.squ2}`);
+                        }
+                        else {
+                            createPiece('chessPieces/bB.png', 'black', 'bisop', `#${move.squ2}`);    
+                        }
+                    }
+                    else if (move.promotePiece === 'knight') {
+                        if (color === 'white') {
+                            createPiece('chessPieces/wN.png', 'white', 'knight', `#${move.squ2}`);
+                        }
+                        else {
+                            createPiece('chessPieces/bN.png', 'black', 'knight', `#${move.squ2}`);    
+                        }
+                    }
+                    else if (move.promotePiece === 'rook') {
+                        if (color === 'white') {
+                            createPiece('chessPieces/wR.png', 'white', 'rook', `#${move.squ2}`);
+                        }
+                        else {
+                            createPiece('chessPieces/bR.png', 'black', 'rook', `#${move.squ2}`);    
+                        }
+                    }
+                    else if (move.promotePiece === 'queen') {
+                        if (color === 'white') {
+                            createPiece('chessPieces/wQ.png', 'white', 'queen', `#${move.squ2}`);
+                        }
+                        else {
+                            createPiece('chessPieces/bQ.png', 'black', 'queen', `#${move.squ2}`);    
+                        }
+                    }   
+                }
+            }
         }
 
         function clickSquare(event) {
@@ -369,11 +695,9 @@
                     secondSquare = cell;
                     const firstPiece = firstSquare.querySelector('.piece');
                     const firstColor = firstPiece.classList.contains('white') ? 'white' : 'black';
-
                     const whitePromote = (secondSquare.rowNum === 8);
                     const blackPromote = (secondSquare.rowNum === 1);
-
-                    const moveDic = {color: firstColor, squ1: firstSquare.id, squ2: secondSquare.id};
+                    moveDic = {color: firstColor, squ1: firstSquare.id, squ2: secondSquare.id};
                     //Moves that are not basic captures//
                     if (!piece) {
                         secondSquare.appendChild(firstPiece);
@@ -397,7 +721,6 @@
                                 secondSquare.removeChild(firstPiece);
                                 showPrompt();
                                 moveDic.specialMove = 'promote';
-                                recordMove(moveDic);
                                 const prompt = document.querySelector('#promotionPrompt');
                                 if (whitePromote) {
                                     promptStyleWhite();
@@ -405,6 +728,7 @@
                                  else {
                                     promptStyleBlack();
                                 }
+                                recordMove(moveDic);
                             }
                             else {
                                 recordMove(moveDic);
@@ -500,7 +824,10 @@
                             layer.classList.add('mouseClick');
                             secondSquare = undefined;
                         }
-                    }                    
+                    }
+                    moveIndex = moveHistory.length -1;
+                    console.log(moveIndex);
+                    console.log(moveHistory);          
                 }
             }
             //initializing next move//
